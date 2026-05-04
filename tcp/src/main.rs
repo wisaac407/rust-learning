@@ -71,7 +71,7 @@ fn main() {
                         // Check if it's TCP
                         if ip_header.protocol == 6 {
                             // Parse TCP header
-                            let tcp_payload_start = ip_header.header_len as usize;
+                            let tcp_payload_start = packet_start + ip_header.header_len as usize;
                             let tcp_payload = &buffer[tcp_payload_start..nbytes];
 
                             match TcpHeader::parse(tcp_payload) {
