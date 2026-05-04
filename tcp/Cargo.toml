@@ -1,0 +1,11 @@
+[package]
+name = "tcp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# TUN/TAP device interface - better macOS support
+tun = "0.6"
+
+# Optional: Async runtime if you want async I/O later
+# tokio = { version = "1", features = ["full"] }
