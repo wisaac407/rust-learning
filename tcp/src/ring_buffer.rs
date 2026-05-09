@@ -1,6 +1,7 @@
 /// FIFO queue implemented as a ring buffer
 use anyhow::{ensure, Result};
 
+/// FIFO queue implemented with as a ring buffer
 pub struct RingBuffer<T, const COUNT: usize> {
     start: usize,
     count: usize,
@@ -8,7 +9,10 @@ pub struct RingBuffer<T, const COUNT: usize> {
 }
 
 impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
+    /// Construct a new blank ring buffer
     pub fn new() -> Self {
+        assert!(COUNT > 0, "Buffer size must be greater than 0");
+
         RingBuffer {
             start: 0,
             count: 0,
@@ -21,16 +25,24 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         self.count
     }
 
+    /// Return true if the buffer is empty
     pub fn is_empty(&self) -> bool {
         self.count == 0
     }
 
+    /// Return true if the buffer is full
     pub fn is_full(&self) -> bool {
+        assert!(
+            self.count <= self.buffer.len(),
+            "Buffer count is greater than buffer length!"
+        );
+
         self.count == self.buffer.len()
     }
 
+    /// Adds an item to the buffer. Returns an error if the buffer is already full
     pub fn put(&mut self, item: T) -> Result<()> {
-        ensure!(self.count < self.buffer.len(), "Buffer already full!");
+        ensure!(!self.is_full(), "Buffer already full!");
 
         let index = (self.start + self.count) % (self.buffer.len());
         self.count += 1;
@@ -39,8 +51,9 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         Ok(())
     }
 
+    /// Returns the first item from the buffer or None if the buffer is empty
     pub fn get(&mut self) -> Option<T> {
-        if self.count == 0 {
+        if self.is_empty() {
             None
         } else {
             let index = self.start;
