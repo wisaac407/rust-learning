@@ -2,6 +2,7 @@ use std::io::Read;
 use tun::Device;
 
 mod packet;
+mod ring_buffer;
 use packet::{IpHeader, TcpHeader};
 
 fn main() {

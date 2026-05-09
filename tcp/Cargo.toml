@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.102"
 # TUN/TAP device interface - better macOS support
 tun = "0.6"
 
