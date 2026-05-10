@@ -89,6 +89,16 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         }
         self.count -= offset;
     }
+
+    pub fn for_each<F>(&mut self, mut func: F)
+    where
+        F: FnMut(&mut T),
+    {
+        for virtual_index in 0..self.count {
+            let index = (self.start + virtual_index) % self.count;
+            func(&mut self.buffer[index]);
+        }
+    }
 }
 
 pub struct RingBufferIterInto<T, const N: usize> {
@@ -354,5 +364,36 @@ mod tests {
         }
 
         assert_eq!(vec, vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn test_for_each() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        queue.put(3).unwrap();
+
+        queue.for_each(|item| {
+            *item += 1;
+        });
+
+        assert_eq!(Vec::from_iter(queue), vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn test_for_each_wrapped() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        assert_eq!(queue.get(), Some(1));
+
+        queue.put(3).unwrap();
+        queue.put(4).unwrap();
+
+        queue.for_each(|item| {
+            *item += 1;
+        });
+
+        assert_eq!(Vec::from_iter(queue), vec![3, 4, 5]);
     }
 }
