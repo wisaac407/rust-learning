@@ -23,7 +23,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
     }
 
     /// Returns the number of items in the queue
-    pub fn get_count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.count
     }
 
@@ -46,7 +46,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
     pub fn put(&mut self, item: T) -> Result<()> {
         ensure!(!self.is_full(), "Buffer already full!");
 
-        let index = (self.start + self.count) % (self.buffer.len());
+        let index = (self.start + self.count) % COUNT;
         self.count += 1;
         self.buffer[index] = item;
 
@@ -59,7 +59,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
             None
         } else {
             let index = self.start;
-            self.start = (self.start + 1) % self.buffer.len();
+            self.start = (self.start + 1) % COUNT;
             self.count -= 1;
 
             Some(self.buffer[index])
@@ -89,11 +89,11 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         let mut offset = 0;
 
         for virtual_index in 0..self.count {
-            let index = (self.start + virtual_index) % self.count;
+            let index = (self.start + virtual_index) % COUNT;
             if predicate(&self.buffer[index]) {
                 if offset > 0 {
-                    // Equivilent to (index - offset) % self.count but guarantees no intermediate negatives
-                    let new_index = (index + self.count - (offset % self.count)) % self.count;
+                    // Equivilent to (index - offset) % COUNT but guarantees no intermediate negatives
+                    let new_index = (index + COUNT - (offset % COUNT)) % COUNT;
 
                     self.buffer[new_index] = self.buffer[index];
                     self.buffer[index] = T::default();
@@ -111,7 +111,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         F: FnMut(&mut T),
     {
         for virtual_index in 0..self.count {
-            let index = (self.start + virtual_index) % self.count;
+            let index = (self.start + virtual_index) % COUNT;
             func(&mut self.buffer[index]);
         }
     }
@@ -137,7 +137,7 @@ where
         if self.virtual_index >= self.buffer.count {
             None
         } else {
-            let index = (self.virtual_index + self.buffer.start) % self.buffer.count;
+            let index = (self.virtual_index + self.buffer.start) % N;
             self.virtual_index += 1;
 
             Some(self.buffer.buffer[index])
@@ -155,7 +155,7 @@ where
         if self.virtual_index >= self.buffer.count {
             None
         } else {
-            let index = (self.virtual_index + self.buffer.start) % self.buffer.count;
+            let index = (self.virtual_index + self.buffer.start) % N;
             self.virtual_index += 1;
 
             Some(&self.buffer.buffer[index])
@@ -295,6 +295,23 @@ mod tests {
     #[test]
     fn test_retain_wrap() {
         let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        assert_eq!(queue.get(), Some(1));
+
+        queue.put(11).unwrap();
+        queue.put(22).unwrap();
+
+        queue.retain(|item| *item > 10);
+
+        assert_eq!(queue.get(), Some(11));
+        assert_eq!(queue.get(), Some(22));
+        assert_eq!(queue.get(), None);
+    }
+
+    #[test]
+    fn test_retain_large_queue() {
+        let mut queue: RingBuffer<i32, 10> = RingBuffer::new();
         queue.put(1).unwrap();
         queue.put(2).unwrap();
         assert_eq!(queue.get(), Some(1));
