@@ -1,3 +1,5 @@
+use std::path::Iter;
+
 /// FIFO queue implemented as a ring buffer
 use anyhow::{ensure, Result};
 
@@ -62,6 +64,30 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
 
             Some(self.buffer[index])
         }
+    }
+
+    pub fn retain<F>(&mut self, predicate: F)
+    where
+        F: Fn(&T) -> bool,
+    {
+        let mut offset = 0;
+
+        for virtual_index in 0..self.count {
+            let index = (self.start + virtual_index) % self.count;
+            if predicate(&self.buffer[index]) {
+                if offset > 0 {
+                    // Equivilent to (index - offset) % self.count but guarantees no intermediate negatives
+                    let new_index = (index + self.count - (offset % self.count)) % self.count;
+
+                    self.buffer[new_index] = self.buffer[index];
+                    self.buffer[index] = T::default();
+                }
+            } else {
+                self.buffer[index] = T::default();
+                offset += 1;
+            }
+        }
+        self.count -= offset;
     }
 }
 
@@ -138,5 +164,36 @@ mod tests {
         queue.put(2).unwrap();
         queue.put(3).unwrap();
         assert!(queue.is_full());
+    }
+
+    #[test]
+    fn test_retain() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        queue.put(3).unwrap();
+
+        queue.retain(|item| *item > 1);
+
+        assert_eq!(queue.get(), Some(2));
+        assert_eq!(queue.get(), Some(3));
+        assert_eq!(queue.get(), None);
+    }
+
+    #[test]
+    fn test_retain_wrap() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        assert_eq!(queue.get(), Some(1));
+
+        queue.put(11).unwrap();
+        queue.put(22).unwrap();
+
+        queue.retain(|item| *item > 10);
+
+        assert_eq!(queue.get(), Some(11));
+        assert_eq!(queue.get(), Some(22));
+        assert_eq!(queue.get(), None);
     }
 }
