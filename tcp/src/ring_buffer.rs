@@ -91,6 +91,90 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
     }
 }
 
+pub struct RingBufferIterInto<T, const N: usize> {
+    buffer: RingBuffer<T, N>,
+    virtual_index: usize,
+}
+
+pub struct RingBufferIterRef<'a, T, const N: usize> {
+    buffer: &'a RingBuffer<T, N>,
+    virtual_index: usize,
+}
+
+impl<'a, T, const N: usize> Iterator for RingBufferIterInto<T, N>
+where
+    T: Copy + Default,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.virtual_index >= self.buffer.count {
+            None
+        } else {
+            let index = (self.virtual_index + self.buffer.start) % self.buffer.count;
+            self.virtual_index += 1;
+
+            Some(self.buffer.buffer[index])
+        }
+    }
+}
+
+impl<'a, T, const N: usize> Iterator for RingBufferIterRef<'a, T, N>
+where
+    T: Copy + Default,
+{
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.virtual_index >= self.buffer.count {
+            None
+        } else {
+            let index = (self.virtual_index + self.buffer.start) % self.buffer.count;
+            self.virtual_index += 1;
+
+            Some(&self.buffer.buffer[index])
+        }
+    }
+}
+
+impl<T, const N: usize> IntoIterator for RingBuffer<T, N>
+where
+    T: Copy + Default,
+{
+    type Item = T;
+
+    type IntoIter = RingBufferIterInto<T, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter {
+            buffer: self,
+            virtual_index: 0,
+        }
+    }
+}
+
+impl<'a, T: Copy + Default, const N: usize> RingBuffer<T, N> {
+    fn iter(&'a self) -> RingBufferIterRef<'a, T, N> {
+        RingBufferIterRef {
+            buffer: self,
+            virtual_index: 0,
+        }
+    }
+}
+
+impl<'a, T, const N: usize> IntoIterator for &'a RingBuffer<T, N>
+where
+    T: Copy + Default,
+{
+    type Item = &'a T;
+
+    type IntoIter = RingBufferIterRef<'a, T, N>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -195,5 +279,80 @@ mod tests {
         assert_eq!(queue.get(), Some(11));
         assert_eq!(queue.get(), Some(22));
         assert_eq!(queue.get(), None);
+    }
+
+    #[test]
+    fn test_iter_into() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        queue.put(3).unwrap();
+
+        let mut vec = Vec::new();
+
+        for item in queue {
+            vec.push(item);
+        }
+
+        assert_eq!(vec, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_iter_into_wrapped() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        assert_eq!(queue.get(), Some(1));
+
+        queue.put(3).unwrap();
+        queue.put(4).unwrap();
+
+        let mut vec = Vec::new();
+
+        for item in queue {
+            vec.push(item);
+        }
+
+        assert_eq!(vec, vec![2, 3, 4]);
+    }
+
+    #[test]
+    fn test_iter_ref() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        queue.put(3).unwrap();
+
+        let mut iter = queue.iter();
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&3));
+
+        let mut vec = Vec::new();
+
+        for item in &queue {
+            vec.push(*item);
+        }
+
+        assert_eq!(vec, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_iter_ref_wrapped() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        assert_eq!(queue.get(), Some(1));
+
+        queue.put(3).unwrap();
+        queue.put(4).unwrap();
+
+        let mut vec = Vec::new();
+
+        for item in &queue {
+            vec.push(*item);
+        }
+
+        assert_eq!(vec, vec![2, 3, 4]);
     }
 }
