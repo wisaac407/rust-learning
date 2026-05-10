@@ -1,6 +1,3 @@
-use std::path::Iter;
-
-/// FIFO queue implemented as a ring buffer
 use anyhow::{ensure, Result};
 
 /// FIFO queue implemented with as a ring buffer
@@ -66,6 +63,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         }
     }
 
+    /// Get a reference to the next item available in the queue
     pub fn peek(&self) -> Option<&T> {
         if self.is_empty() {
             None
@@ -74,6 +72,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         }
     }
 
+    /// Get a mutable reference to the next available item in the queue
     pub fn peek_mut(&mut self) -> Option<&mut T> {
         if self.is_empty() {
             None
@@ -82,6 +81,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         }
     }
 
+    /// Filters out items from the queue
     pub fn retain<F>(&mut self, predicate: F)
     where
         F: Fn(&T) -> bool,
@@ -106,6 +106,7 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         self.count -= offset;
     }
 
+    /// Iterate over every item in the queue returning a mutable reference
     pub fn for_each<F>(&mut self, mut func: F)
     where
         F: FnMut(&mut T),
