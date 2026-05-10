@@ -66,6 +66,22 @@ impl<T: Copy + Default, const COUNT: usize> RingBuffer<T, COUNT> {
         }
     }
 
+    pub fn peek(&self) -> Option<&T> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(&self.buffer[self.start])
+        }
+    }
+
+    pub fn peek_mut(&mut self) -> Option<&mut T> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(&mut self.buffer[self.start])
+        }
+    }
+
     pub fn retain<F>(&mut self, predicate: F)
     where
         F: Fn(&T) -> bool,
@@ -187,6 +203,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -395,5 +413,29 @@ mod tests {
         });
 
         assert_eq!(Vec::from_iter(queue), vec![3, 4, 5]);
+    }
+
+    #[test]
+    fn test_peak() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        queue.put(3).unwrap();
+
+        assert_eq!(queue.peek(), Some(&1));
+    }
+
+    #[test]
+    fn test_peak_mut() {
+        let mut queue: RingBuffer<i32, 3> = RingBuffer::new();
+        queue.put(1).unwrap();
+        queue.put(2).unwrap();
+        queue.put(3).unwrap();
+
+        let a = queue.peek_mut().unwrap();
+        assert_eq!(a, &1);
+        *a = 7;
+
+        assert_eq!(Vec::from_iter(queue), vec![7, 2, 3]);
     }
 }
